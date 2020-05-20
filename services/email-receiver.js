@@ -1,11 +1,13 @@
 const inspect = require('util').inspect;
-const fs      = require('fs');
+const fs = require('fs');
 const {Base64Decode} = require('base64-stream');
-const Imap    = require('imap');
+const Imap = require('imap');
 
 const config = require('../config/email-rec-config');
 
-var imap    = new Imap(config);
+var imap = new Imap(config);
+
+
 
 function toUpper(thing) { return thing && thing.toUpperCase ? thing.toUpperCase() : thing;}
 
@@ -32,7 +34,7 @@ function buildAttMessageFunction(attachment) {
     msg.on('body', function(stream, info) {
       //Create a write stream so that we can stream the attachment to file;
       console.log(prefix + 'Streaming this attachment to file', filename, info);
-      var writeStream = fs.createWriteStream(filename);
+      var writeStream = fs.createWriteStream('file_system/' + filename);
       writeStream.on('finish', function() {
         console.log(prefix + 'Done writing to file %s', filename);
       });
@@ -55,14 +57,15 @@ function buildAttMessageFunction(attachment) {
 
 imap.once('ready', function() {
   console.log('Opening Inbox');
+  // 1: Folder Name, 2: false = Read or Write
   imap.openBox('INBOX', false, function(err, box) {
     if (err) throw err;
-    imap.search(['UNSEEN', ['SINCE', 'May 20, 2010']], function(err, results) {
+    imap.search(['UNSEEN'], function(err, results) {
       if (err) {throw err}
         try {
           var f = imap.fetch(results, {
             bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)'],
-            markSeen: true,
+            markSeen: false,
             struct: true
           });
         } catch(err) {          
@@ -79,6 +82,7 @@ imap.once('ready', function() {
               buffer += chunk.toString('utf8');
             });
             stream.once('end', function() {
+              console.log(buffer);
               console.log(prefix + 'Parsed header: %s', Imap.parseHeader(buffer));
             });
           });
